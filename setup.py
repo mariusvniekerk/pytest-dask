@@ -22,7 +22,7 @@ setup(
     url='https://github.com/mariusvniekerk/pytest-dasktest',
     description='A plugin to run tests with dask',
     long_description=read('README.rst'),
-    packages=['pytest_dasktest'],
+    packages=find_packages('pytest_dasktest'),
     install_requires=['pytest>=3.1.1'],
     classifiers=[
         'Development Status :: 4 - Beta',

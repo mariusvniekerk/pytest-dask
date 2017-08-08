@@ -2,15 +2,13 @@
 
 
 import pytest
-
 from _pytest.runner import CallInfo
 from dask import compute, delayed
 from distributed import Client, LocalCluster
 
 
 # Ensure that the serializer is pathched appropriately.
-from pytest_dasktest.serde_patch import *
-
+import pytest_dasktest.serde_patch  # noqa: F401
 
 
 class DaskRunner(object):
