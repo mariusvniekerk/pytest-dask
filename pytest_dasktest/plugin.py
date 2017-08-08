@@ -16,8 +16,12 @@ from pytest_dasktest.serde_patch import *
 class DaskRunner(object):
     def __init__(self, config):
         self.config = config
-        self.cluster = LocalCluster(n_workers=1, processes=False)
-        self.client = Client(self.cluster, set_as_default=True)
+        remote_cluster_address = config.get('dask_scheduler_address')
+        if remote_cluster_address:
+            self.client = Client(remote_cluster_address)
+        else:
+            self.cluster = LocalCluster(n_workers=1, processes=False)
+            self.client = Client(self.cluster, set_as_default=True)
 
     def __getstate__(self):
         return {'config': self.config}
@@ -121,6 +125,14 @@ def pytest_addoption(parser):
         dest='dask',
         default=False,
         help='Set the value for the fixture "dask".'
+    )
+
+    group.addoption(
+        '--dask-scheduler-address',
+        action='store_string',
+        dest='dask_scheduler_address',
+        default='',
+        help='(optional) specify an existing dask scheduler to connect to.'
     )
 
 
