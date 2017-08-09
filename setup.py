@@ -12,7 +12,7 @@ def read(fname):
 
 
 setup(
-    name='pytest-dasktest',
+    name='pytest-dask',
     version='0.1.0',
     author='Marius van Niekerk',
     author_email='marius.v.niekerk@gmail.com',
@@ -22,7 +22,7 @@ setup(
     url='https://github.com/mariusvniekerk/pytest-dasktest',
     description='A plugin to run tests with dask',
     long_description=read('README.rst'),
-    packages=find_packages('pytest_dasktest'),
+    packages=find_packages('pytest_dask'),
     install_requires=['pytest>=3.1.1'],
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -43,7 +43,7 @@ setup(
     ],
     entry_points={
         'pytest11': [
-            'dasktest = pytest_dasktest.plugin',
+            'dasktest = pytest_dask.plugin',
         ],
     },
 )

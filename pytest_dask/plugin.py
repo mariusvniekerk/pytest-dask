@@ -5,27 +5,35 @@ import pytest
 from _pytest.runner import CallInfo
 from dask import compute, delayed
 from distributed import Client, LocalCluster
-
+from contextlib import contextmanager
+import sys
 
 # Ensure that the serializer is pathched appropriately.
-import pytest_dasktest.serde_patch  # noqa: F401
+from pytest_dask.serde_patch import * # noqa: F401
+from pytest_dask.utils import get_imports, update_syspath, restore_syspath
+
+ORIGINAL_SYS_PATH = sys.path.copy()
+
 
 
 class DaskRunner(object):
     def __init__(self, config):
         self.config = config
-        remote_cluster_address = config.get('dask_scheduler_address')
+        self.scheduler_mode = config.getvalue("dask_scheduler_mode")
+        remote_cluster_address = config.getvalue('dask_scheduler_address')
+        remote_cluster_address = 'tcp://127.0.0.1:8786'
         if remote_cluster_address:
             self.client = Client(remote_cluster_address)
         else:
-            self.cluster = LocalCluster(n_workers=1, processes=False)
+            self.cluster = LocalCluster(ip='127.0.0.1', n_workers=1, processes=True)
             self.client = Client(self.cluster, set_as_default=True)
 
     def __getstate__(self):
-        return {'config': self.config}
+        return {'config': None}
 
     def __setstate__(self, state):
-        setattr(self, 'config', state['config'])
+        for k in state:
+            print(k)
 
     def pytest_runtestloop(self, session):
         if (session.testsfailed and
@@ -40,34 +48,45 @@ class DaskRunner(object):
         if session.config.option.collectonly:
             return True
 
-        def generate_tasks():
+        def generate_tasks(session):
             for i, item in enumerate(session.items):
                 # nextitem = session.items[i + 1] if i + 1 < len(session.items) else None
+
                 @delayed
-                def run_test(item):
+                def run_test(_item):
                     # for p in unregister_plugins:
                     #     item.config.pluginmanager.unregister(p)
-                    new_pm = item.config.pluginmanager.__recreate__()
+                    new_pm = _item.config.pluginmanager.__recreate__()
                     # item.config.__reinit__(new_pm)
                     # TerminalReporter
 
-                    return self.pytest_runtest_protocol(item=item, nextitem=None)
+                    results = self.pytest_runtest_protocol(item=_item, nextitem=None)
+
+                    return results
 
                 hook = item.ihook
+                # try to ensure that the module gets treated as a dynamic module that does not exist.
+
+                delattr(item.module, '__file__')
+
                 setup = hook.pytest_runtest_setup
                 make_report = hook.pytest_runtest_makereport
-
-                from cloudpickle import loads, dumps
-                raw = dumps(item, 4)
-                item3 = loads(raw)
-
-                # item2 = deserialize(*serialize(item))
-                # fut = self.client.submit(run_test, item)
                 fut = run_test(item)
                 yield fut
 
-        # TODO: use something like as_completed for these results.
-        results = compute(list(generate_tasks()))
+        # Due to test directories being dynamic in certain cases we should make sure that our workers are using the
+        # same pythonpath that we are using here.
+        original_sys_path = self.client.run(get_imports)
+        updated_sys_path = self.client.run(update_syspath, sys.path)
+        results = compute(list(generate_tasks(session)))
+
+        # restore correct syspath
+        for worker, value in original_sys_path.items():
+            self.client.run(restore_syspath, value, workers=[worker])
+
+        original_sys_path2 = self.client.run(get_imports)
+        assert original_sys_path == original_sys_path2
+
         # log these reports to the console.
         for r in results:
             for t in r:
@@ -114,6 +133,11 @@ class DaskRunner(object):
     def pytest_runtest_setup(self, item):
         item.session._setupstate.prepare(item)
 
+    def pytest_unconfigure(self, config):
+        """ called before test process is exited.  """
+        if hasattr(self, 'cluster'):
+            self.cluster.close()
+
 
 def pytest_addoption(parser):
     group = parser.getgroup('dask')
@@ -127,15 +151,31 @@ def pytest_addoption(parser):
 
     group.addoption(
         '--dask-scheduler-address',
-        action='store_string',
         dest='dask_scheduler_address',
         default='',
         help='(optional) specify an existing dask scheduler to connect to.'
     )
+
+    group.addoption(
+        '--dask-scheduler-mode',
+        type='choice',
+        choices=['thread', 'process'],
+        default='process',
+        help='which parallism method should be employed'
+    )
+
+    group.addoption(
+        '--dask-test-selection',
+        type='choice',
+        choices=['all', 'marked'],
+        default='all'
+    )
+
 
 
 @pytest.mark.trylast
 def pytest_configure(config):
     if config.getoption("dask"):
         dask_session = DaskRunner(config)
+        from . import serde_patch
         config.pluginmanager.register(dask_session, "dask_session")

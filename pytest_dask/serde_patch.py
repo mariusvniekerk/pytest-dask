@@ -24,6 +24,7 @@ from six import MovedModule
 
 CloudPickler.dispatch[ApiModule] = CloudPickler.save_module
 CloudPickler.dispatch[MovedModule] = CloudPickler.save_module
+# CloudPickler.dispatch[]
 
 
 def apply_getnewargs(cls, ref):
