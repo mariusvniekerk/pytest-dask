@@ -1,5 +1,6 @@
-"""Utility module to ensure that pytest classes are mostly serializable.  This is required to be able to use
-dask-distributed.
+"""Utility module to ensure that pytest classes are mostly serializable.  
+
+This is required to be able to use dask-distributed.
 
 """
 

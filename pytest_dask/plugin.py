@@ -25,7 +25,11 @@ class DaskRunner(object):
         if remote_cluster_address:
             self.client = Client(remote_cluster_address)
         else:
-            self.cluster = LocalCluster(ip='127.0.0.1', n_workers=4, processes=False)
+            self.cluster = LocalCluster(
+                ip='127.0.0.1',
+                n_workers=config.getvalue('dask_nworkers'),
+                processes=config.getvalue('dask_scheduler_mode') == 'process'
+            )
             self.client = Client(self.cluster, set_as_default=True)
 
     def __getstate__(self):
@@ -33,7 +37,7 @@ class DaskRunner(object):
 
     def __setstate__(self, state):
         for k in state:
-            print(k)
+            pass
 
     def pytest_runtestloop(self, session):
         if (session.testsfailed and
@@ -146,14 +150,14 @@ def pytest_addoption(parser):
         action='store_true',
         dest='dask',
         default=False,
-        help='Set the value for the fixture "dask".'
+        help='Set the value for the fixture "dask".',
     )
 
     group.addoption(
         '--dask-scheduler-address',
         dest='dask_scheduler_address',
         default='',
-        help='(optional) specify an existing dask scheduler to connect to.'
+        help='(optional) specify an existing dask scheduler to connect to.',
     )
 
     group.addoption(
@@ -161,14 +165,20 @@ def pytest_addoption(parser):
         type='choice',
         choices=['thread', 'process'],
         default='process',
-        help='which parallism method should be employed'
+        help='which parallism method should be employed',
     )
 
     group.addoption(
         '--dask-test-selection',
         type='choice',
         choices=['all', 'marked'],
-        default='all'
+        default='all',
+    )
+
+    group.addoption(
+        '--dask-nworkers',
+        type='int',
+        default='4',
     )
 
 
@@ -177,5 +187,4 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     if config.getoption("dask"):
         dask_session = DaskRunner(config)
-        from . import serde_patch
         config.pluginmanager.register(dask_session, "dask_session")
