@@ -11,9 +11,11 @@ def read(fname):
     return codecs.open(file_path, encoding='utf-8').read()
 
 
+packages = find_packages(exclude=['tests', 'docs'])
+
 setup(
     name='pytest-dask',
-    version='0.1.0',
+    version='0.1.1',
     author='Marius van Niekerk',
     author_email='marius.v.niekerk@gmail.com',
     maintainer='Marius van Niekerk',
@@ -22,7 +24,7 @@ setup(
     url='https://github.com/mariusvniekerk/pytest-dasktest',
     description='A plugin to run tests with dask',
     long_description=read('README.rst'),
-    packages=find_packages('pytest_dask'),
+    packages=packages,
     install_requires=['pytest>=3.1.1'],
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -41,9 +43,10 @@ setup(
         'Operating System :: OS Independent',
         'License :: OSI Approved :: MIT License',
     ],
+    zip_safe=False,
     entry_points={
         'pytest11': [
-            'dasktest = pytest_dask.plugin',
+            'dask = pytest_dask.plugin',
         ],
     },
 )

@@ -3,17 +3,16 @@
 
 import pytest
 from _pytest.runner import CallInfo
-from dask import compute, delayed
 from distributed import Client, LocalCluster, as_completed
 from contextlib import contextmanager
 import sys
 
 # Ensure that the serializer is pathched appropriately.
-from pytest_dask.serde_patch import * # noqa: F401
+from pytest_dask.serde_patch import *  # noqa: F401,F403
 from pytest_dask.utils import get_imports, update_syspath, restore_syspath
 
-ORIGINAL_SYS_PATH = sys.path.copy()
-
+from logging import getLogger
+logger = getLogger(__name__)
 
 
 class DaskRunner(object):
@@ -21,13 +20,12 @@ class DaskRunner(object):
         self.config = config
         self.scheduler_mode = config.getvalue("dask_scheduler_mode")
         remote_cluster_address = config.getvalue('dask_scheduler_address')
-        #remote_cluster_address = 'tcp://127.0.0.1:8786'
         if remote_cluster_address:
             self.client = Client(remote_cluster_address)
         else:
             self.cluster = LocalCluster(
                 ip='127.0.0.1',
-                n_workers=config.getvalue('dask_nworkers'),
+                n_workers=int(config.getvalue('dask_nworkers')),
                 processes=config.getvalue('dask_scheduler_mode') == 'process'
             )
             self.client = Client(self.cluster, set_as_default=True)
@@ -62,13 +60,14 @@ class DaskRunner(object):
                     results = self.pytest_runtest_protocol(item=_item, nextitem=None)
                     return results
 
-                hook = item.ihook
-                # try to ensure that the module gets treated as a dynamic module that does not exist.
+                # hook = item.ihook
+                # try to ensure that the module gets treated as a dynamic module that does not
+                # exist.
 
                 # delattr(item.module, '__file__')
+                # setup = hook.pytest_runtest_setup
+                # make_report = hook.pytest_runtest_makereport
 
-                setup = hook.pytest_runtest_setup
-                make_report = hook.pytest_runtest_makereport
                 fut = self.client.submit(run_test, item, pure=False)
                 yield fut
 
@@ -85,10 +84,12 @@ class DaskRunner(object):
 
     @contextmanager
     def remote_syspath_ctx(self):
-        # Due to test directories being dynamic in certain cases we should make sure that our workers are using the
-        # same pythonpath that we are using here.
+        # Due to test directories being dynamic in certain cases we should make sure that our
+        # workers are using the same pythonpath that we are using here.
         original_sys_path = self.client.run(get_imports)
+        logger.debug("Original remote sys path %s", original_sys_path)
         updated_sys_path = self.client.run(update_syspath, sys.path)
+        logger.debug("Updated remote sys path %s", updated_sys_path)
         try:
             yield
         finally:
@@ -180,7 +181,6 @@ def pytest_addoption(parser):
         type='int',
         default='4',
     )
-
 
 
 @pytest.mark.trylast

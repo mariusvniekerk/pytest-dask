@@ -1,7 +1,6 @@
-"""Utility module to ensure that pytest classes are mostly serializable.  
+"""Utility module to ensure that pytest classes are mostly serializable.
 
 This is required to be able to use dask-distributed.
-
 """
 
 from __future__ import absolute_import, print_function
@@ -20,7 +19,6 @@ from _pytest.vendored_packages.pluggy import PluginManager
 
 from cloudpickle import CloudPickler
 from py._apipkg import ApiModule
-from pygments.lexers import _automodule
 from six import MovedModule
 
 CloudPickler.dispatch[ApiModule] = CloudPickler.save_module
@@ -48,7 +46,13 @@ class _DictState:
             setattr(self, k, v)
 
 
-apply_getsetstate(_automodule, _DictState)
+try:
+    # pygments isn't necessarily installed -- if it is we need to be able to pickle these modules
+    from pygments.lexers import _automodule
+    apply_getsetstate(_automodule, _DictState)
+except ImportError:
+    pass
+
 apply_getsetstate(Config, _DictState)
 
 
@@ -202,7 +206,7 @@ class _:
     def __recreate__(self):
         new_pm = PytestPluginManager()
         for plugin in self._1_plugins:
-            ret = new_pm.register(plugin)
+            new_pm.register(plugin)
             if hasattr(plugin, '__reinit__'):
                 plugin.__reinit__(new_pm)
         return new_pm
@@ -214,6 +218,10 @@ class _:
 
 
 HookRecorder.__getstate__ = lambda self: {}
+
+
 def setstate(self, state):
     setattr(self, '_pluginmanager', get_plugin_manager())
+
+
 HookRecorder.__setstate__ = setstate

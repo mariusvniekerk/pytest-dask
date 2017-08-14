@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
+from textwrap import dedent
 
 
 def test_dask_flag(testdir):
@@ -34,12 +35,12 @@ def simple(x):
 def test_larger_suite(testdir):
     """Make sure that pytest accepts our fixture, and runs it with dask."""
 
-    num_tests = 30
+    num_tests = 6
 
     # create a temporary pytest test module
-    testdir.makepyfile("""
+    testdir.makepyfile(dedent("""
         import pytest
-        
+
         @pytest.mark.parametrize('x', list(range({num_tests})))
         def test_param(x):
             '''a test that should take on average about 1 seconds'''
@@ -47,7 +48,7 @@ def test_larger_suite(testdir):
             import random
             time.sleep(random.random() * 2)
             assert x >= 0
-    """.format(num_tests=num_tests))
+    """.format(num_tests=num_tests)))
 
     # run pytest with the following cmd args
     result = testdir.runpytest(
@@ -61,7 +62,8 @@ def test_larger_suite(testdir):
         if line.startswith('test_larger_suite.py'):
             runs.append(line)
 
-    # if we are running in parallel the chances of runs being ordered are very small. (1 / factorial(num_tests) )
+    # if we are running in parallel the chance of runs being ordered is very
+    # small. (1 / factorial(num_tests) )
     assert runs != list(sorted(runs))
 
     # make sure that that we get a '0' exit code for the testsuite
@@ -77,4 +79,3 @@ def test_help_message(testdir):
         'dask:',
         '*--dask*',
     ])
-
