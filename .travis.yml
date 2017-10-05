@@ -10,7 +10,7 @@ matrix:
       
 install:
   - pip install pytest dask distributed
-  - pip install --upgade git+https://github.com/cloudpipe/cloudpickle@master
+  - pip install --upgrade git+https://github.com/cloudpipe/cloudpickle@master
 
 script:
   - pip install .
