@@ -2,8 +2,8 @@
 pytest-dasktest
 ===============
 
-.. image:: https://travis-ci.org/mariusvniekerk/pytest-dasktest.svg?branch=master
-    :target: https://travis-ci.org/mariusvniekerk/pytest-dasktest
+.. image:: https://travis-ci.org/mariusvniekerk/pytest-dask.svg?branch=master
+    :target: https://travis-ci.org/mariusvniekerk/pytest-dask
     :alt: See Build Status on Travis CI
 
 A plugin to run tests with dask
