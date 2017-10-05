@@ -6,25 +6,13 @@ language: python
 matrix:
     include:
       - python: 2.7
-        env: TOX_ENV=py27
       - python: 3.5
-        env: TOX_ENV=py35
       - python: 3.6
-        env: TOX_ENV=py36
       - python: pypy
-        env: TOX_ENV=pypy
-      - python: 3.6
-        env: TOX_ENV=flake8
-
+      
 install:
-  - pip install tox
+  - pip install pytest dask
 
 script:
-  - tox -e $TOX_ENV
-
-before_cache:
-  - rm -rf $HOME/.cache/pip/log
-
-cache:
-  directories:
-    - $HOME/.cache/pip
+  - pip install .
+  - pytest -vrsx
